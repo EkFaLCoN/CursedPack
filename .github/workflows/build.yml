@@ -1,0 +1,44 @@
+name: Build CursedPack
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Repo'ya zip attiysan (CursedPack-plugin-src.zip gibi) burada acilir.
+      - name: Zip varsa ac
+        run: |
+          shopt -s nullglob
+          for z in *.zip; do
+            echo "Aciliyor: $z"
+            unzip -oq "$z" -d _unzipped
+          done
+          # pom.xml nerede bulursak proje kokunu oraya tasi
+          if [ ! -f pom.xml ]; then
+            POM=$(find . -name pom.xml -not -path "./_unzipped/*/target/*" | head -1)
+            if [ -z "$POM" ]; then echo "pom.xml bulunamadi!"; exit 1; fi
+            DIR=$(dirname "$POM")
+            echo "Proje kokü: $DIR"
+            cp -r "$DIR"/. .
+          fi
+          ls -la
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+
+      - name: Derle
+        run: mvn -B clean package
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CursedPack-jar
+          path: target/CursedPack.jar
+          if-no-files-found: error
